@@ -1,0 +1,54 @@
+import requests
+from bs4 import BeautifulSoup
+from feedgen.feed import FeedGenerator
+import datetime
+
+def fetch_cookie_articles():
+    url = "https://www.bakerykart.com/baking-world-blog/blog-detail/baking-trends"
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        print("Failed to retrieve webpage")
+        return []
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    articles = []
+    
+    for article in soup.find_all('div', class_='blog-item'):  # Adjust based on actual HTML structure
+        title_tag = article.find('h3')
+        if title_tag and 'cookie' in title_tag.text.lower():  # Filter for cookie-related articles
+            link_tag = article.find('a', href=True)
+            desc_tag = article.find('p')
+            
+            articles.append({
+                'title': title_tag.text.strip(),
+                'link': link_tag['href'] if link_tag else url,
+                'description': desc_tag.text.strip() if desc_tag else "No description available",
+                'pubDate': datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')
+            })
+    
+    return articles
+
+def generate_rss_feed():
+    fg = FeedGenerator()
+    fg.title("Bakery Kart - Cookie Trends")
+    fg.link(href="https://www.bakerykart.com/baking-world-blog/blog-detail/baking-trends")
+    fg.description("Latest cookie-related baking trends from Bakery Kart.")
+    fg.language("en")
+    fg.pubDate(datetime.datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT'))
+    
+    articles = fetch_cookie_articles()
+    
+    for article in articles:
+        fe = fg.add_entry()
+        fe.title(article['title'])
+        fe.link(href=article['link'])
+        fe.description(article['description'])
+        fe.pubDate(article['pubDate'])
+    
+    fg.rss_file("cookie_trends.xml")
+    print("RSS feed updated.")
+
+if __name__ == "__main__":
+    generate_rss_feed()
+
